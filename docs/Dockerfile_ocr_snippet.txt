@@ -1,0 +1,10 @@
+# Add tesseract to the RUNTIME stage of Dockerfile (after existing apt packages):
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libxrender1 libxext6 libsm6 curl \
+    tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
+# Optional (PDF raster): also install poppler-utils and pip package pdf2image
+# RUN apt-get install -y --no-install-recommends poppler-utils

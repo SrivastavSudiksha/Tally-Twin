@@ -1,0 +1,20 @@
+<!--
+  Paste this block inside the PATIENT tab of index.html,
+  ideally right after the Demographics fieldset (or at the top of tab-patient).
+-->
+
+          <fieldset>
+            <legend>Upload lab report <span class="muted-inline">(optional)</span></legend>
+            <p class="muted" style="margin:0 0 10px;font-size:13px">
+              Upload a blood-test report image or PDF. Detected values will fill the form —
+              always review before running a simulation.
+            </p>
+            <div class="comp-upload">
+              <label class="file-label">
+                <input type="file" id="lab-report" accept="image/*,.pdf,application/pdf" aria-label="Upload lab report">
+                <span class="ghost file-btn">Upload lab report (image / PDF)</span>
+              </label>
+              <span class="comp-hint muted">Supports PNG, JPEG, WebP, PDF · max ~12 MB</span>
+            </div>
+            <p class="derived" id="lab-status" hidden></p>
+          </fieldset>

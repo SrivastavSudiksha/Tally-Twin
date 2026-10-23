@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digital Twin</title>
+<meta name="description" content="Personalised drug-response simulation for one patient, not the population average.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ PRELOADER ============ -->
+<div id="preloader" role="status" aria-label="Loading">
+  <div class="pl-progress">
+    <div class="bar"><i></i></div>
+    <span class="pct">0%</span>
+  </div>
+  <canvas aria-hidden="true"></canvas>
+</div>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <a class="brand" href="#simulate" aria-label="Digital Twin home">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 2c0 6 10 6 10 12S7 16 7 22M17 2c0 6-10 6-10 12s10 2 10 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 5h6M8.5 19h7M10 11.5h4" stroke="#f7c6d9" stroke-width="1.6" stroke-linecap="round"/></svg>
+    Digital Twin
+  </a>
+  <nav aria-label="Main">
+    <a href="#simulate" class="active">Simulate</a>
+    <a href="#report">Report</a>
+    <a href="#method">Method</a>
+  </nav>
+  <button class="nav-run" type="submit" form="twin-form">Run simulation</button>
+</header>
+
+<main>
+  <!-- ============ HERO / INPUT ============ -->
+  <section id="simulate" class="hero">
+    <div class="left">
+      <h1>See how a drug behaves in your body.</h1>
+
+      <form id="twin-form" class="panel" novalidate>
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" aria-controls="tab-patient" id="t-patient">Patient</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="tab-drug" id="t-drug">Drug</button>
+          <span class="tab-ink" aria-hidden="true"></span>
+        </div>
+
+        <!-- ---------- PATIENT ---------- -->
+        <div id="tab-patient" role="tabpanel" aria-labelledby="t-patient" class="tabpanel">
+<!--
+  Paste this block inside the PATIENT tab of index.html,
+  ideally right after the Demographics fieldset (or at the top of tab-patient).
+-->
+
+          <fieldset>
+            <legend>Upload lab report <span class="muted-inline">(optional)</span></legend>
+            <p class="muted" style="margin:0 0 10px;font-size:13px">
+              Upload a blood-test report image or PDF. Detected values will fill the form —
+              always review before running a simulation.
+            </p>
+            <div class="comp-upload">
+              <label class="file-label">
+                <input type="file" id="lab-report" accept="image/*,.pdf,application/pdf" aria-label="Upload lab report">
+                <span class="ghost file-btn">Upload lab report (image / PDF)</span>
+              </label>
+              <span class="comp-hint muted">Supports PNG, JPEG, WebP, PDF · max ~12 MB</span>
+            </div>
+            <p class="derived" id="lab-status" hidden></p>
+          </fieldset>
+          <fieldset data-organ="body">
+            <legend>Demographics</legend>
+            <div class="grid g4">
+              <label>Age<input name="age" type="number" min="0" max="120" inputmode="numeric" required><small>years</small></label>
+              <label>Sex<select name="sex" required><option value="">Select</option><option value="F">Female</option><option value="M">Male</option></select></label>
+              <label>Weight<input name="weight" type="number" min="1" max="400" step="0.1" required><small>kg</small></label>
+              <label>Height<input name="height" type="number" min="40" max="250"><small>cm</small></label>
+            </div>
+            <p class="derived">BMI <output name="bmi">–</output></p>
+          </fieldset>
+
+          <fieldset data-organ="kidneys">
+            <legend>Kidney function</legend>
+            <div class="seg" role="radiogroup" aria-label="Kidney input">
+              <label><input type="radio" name="kidneyMode" value="scr" checked><span>Serum creatinine</span></label>
+              <label><input type="radio" name="kidneyMode" value="egfr"><span>eGFR</span></label>
+            </div>
+            <div class="grid g2">
+              <label class="k-scr">Creatinine<input name="creatinine" type="number" min="0.1" max="20" step="0.01" required><small>mg/dL</small></label>
+              <label class="k-egfr" hidden>eGFR<input name="egfr" type="number" min="1" max="200"><small>mL/min/1.73m²</small></label>
+            </div>
+            <p class="derived">eGFR (CKD-EPI 2021) <output name="egfrOut">–</output></p>
+          </fieldset>
+
+          <fieldset data-organ="liver">
+            <legend>Liver function</legend>
+            <div class="grid g4">
+              <label>ALT<input name="alt" type="number" min="0" step="1" required><small>U/L</small></label>
+              <label>AST<input name="ast" type="number" min="0" step="1" required><small>U/L</small></label>
+              <label>Bilirubin<input name="bilirubin" type="number" min="0" step="0.1"><small>mg/dL</small></label>
+              <label>Albumin<input name="albumin" type="number" min="0" max="6" step="0.1"><small>g/dL</small></label>
+            </div>
+          </fieldset>
+
+          <fieldset data-organ="heart">
+            <legend>Conditions</legend>
+            <div class="chips">
+              <label><input type="checkbox" name="conditions" value="diabetes"><span>Diabetes</span></label>
+              <label><input type="checkbox" name="conditions" value="hypertension"><span>Hypertension</span></label>
+              <label><input type="checkbox" name="conditions" value="heart"><span>Heart disease</span></label>
+              <label><input type="checkbox" name="conditions" value="kidney"><span>Kidney disease</span></label>
+              <label><input type="checkbox" name="conditions" value="liver"><span>Liver disease</span></label>
+              <label><input type="checkbox" name="conditions" value="pregnancy"><span>Pregnancy</span></label>
+              <label><input type="checkbox" name="conditions" value="none"><span>None</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Current medicines <span class="req" aria-hidden="true">*</span></legend>
+            <div id="meds" class="meds"></div>
+            <div class="row-actions">
+              <button type="button" class="ghost" id="add-med">Add medicine</button>
+              <label class="inline"><input type="checkbox" name="noMeds"> Takes no medicines</label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Drug allergies <span class="req" aria-hidden="true">*</span></legend>
+            <div class="tags" id="allergy-tags">
+              <input id="allergy-input" placeholder="Type an allergy and press Enter" aria-label="Add allergy">
+            </div>
+            <label class="inline"><input type="checkbox" name="noAllergies"> No known allergies</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Lifestyle</legend>
+            <div class="grid g2">
+              <label>Smoking<select name="smoking"><option value="never">Never</option><option value="former">Former</option><option value="current">Current</option></select></label>
+              <label>Alcohol<select name="alcohol"><option value="none">None</option><option value="moderate">Moderate</option><option value="heavy">Heavy</option></select></label>
+            </div>
+          </fieldset>
+
+          <details data-organ="heart">
+            <summary>Optional: genetics and ECG</summary>
+            <div class="grid g4">
+              <label>CYP2D6<select name="cyp2d6"></select></label>
+              <label>CYP2C19<select name="cyp2c19"></select></label>
+              <label>CYP2C9<select name="cyp2c9"></select></label>
+              <label>QTc<input name="qtc" type="number" min="250" max="700"><small>ms</small></label>
+            </div>
+          </details>
+
+          <div class="foot">
+            <button type="button" class="primary" id="to-drug">Next: drug</button>
+          </div>
+        </div>
+
+        <!-- ---------- DRUG ---------- -->
+        <div id="tab-drug" role="tabpanel" aria-labelledby="t-drug" class="tabpanel" hidden>
+          <fieldset>
+            <legend>Drug identifier <span class="req" aria-hidden="true">*</span></legend>
+            <div class="seg" role="radiogroup" aria-label="Identifier type">
+              <label><input type="radio" name="idMode" value="name" checked><span>Name</span></label>
+              <label><input type="radio" name="idMode" value="smiles"><span>SMILES</span></label>
+            </div>
+            <label><span class="sr">Drug name or SMILES</span><input name="drug" required placeholder="e.g. ibuprofen" autocomplete="off" spellcheck="false"></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Composition <span class="req" aria-hidden="true">*</span></legend>
+            <div class="comp-table-wrap">
+              <div class="comp-head" aria-hidden="true">
+                <span>Ingredient</span><span>Strength</span><span>Unit</span><span></span>
+              </div>
+              <div id="comp-rows" class="comp-rows"></div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="ghost" id="add-comp">Add ingredient</button>
+            </div>
+            <div class="comp-upload">
+              <label class="file-label">
+                <input type="file" name="compImage" accept="image/*" id="comp-image">
+                <span class="ghost file-btn">Upload pack / label image</span>
+              </label>
+              <span class="comp-hint muted" id="comp-hint">Fill the table, or upload a label image to pre-fill rows.</span>
+            </div>
+            <p class="derived" id="comp-status" hidden></p>
+            <input type="hidden" name="composition" id="composition-hidden" value="">
+          </fieldset>
+
+          <fieldset>
+            <legend>Regimen</legend>
+            <div class="grid g2">
+              <label>Dose<input name="dose" type="number" min="0.01" step="any" required><small>mg</small></label>
+              <label>Route<select name="route"><option value="oral">Oral</option><option value="iv">IV</option></select></label>
+              <label>Frequency<input name="freq" type="number" min="1" max="12" value="1" required><small>times per day</small></label>
+              <label>Duration<input name="duration" type="number" min="1" max="365" value="3" required><small>days</small></label>
+            </div>
+          </fieldset>
+
+          <div class="foot">
+            <span class="req-note"><span class="req">*</span> Required fields</span>
+            <button type="button" class="ghost" id="to-patient">Back to patient</button>
+            <button type="submit" class="primary">Run simulation</button>
+          </div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+      </form>
+    </div>
+
+    <div class="right">
+      <canvas id="body-canvas" aria-label="Rotating model of the patient's body with nerve network. Drag to rotate." role="img"></canvas>
+      <ul class="legend" aria-hidden="true">
+        <li><i class="red"></i>Red network</li>
+        <li><i class="blue"></i>Blue network</li>
+        <li><i class="org"></i>Organ flag</li>
+      </ul>
+      <p class="hint">Drag to rotate</p>
+    </div>
+  </section>
+
+  <!-- ============ REPORT ============ -->
+  <section id="report" class="report" hidden aria-live="polite"></section>
+
+  <!-- ============ METHOD ============ -->
+  <section id="method" class="method">
+    <p class="disclaimer">Research tool. Outputs are indicative and are not a substitute for clinical judgement.</p>
+  </section>
+</main>
+
+<script>
+/* Set DT_API_URL / DT_API_KEY via server config or localStorage — never hardcode production keys */
+window.DT_API_URL = window.DT_API_URL || '';
+window.DT_API_KEY = window.DT_API_KEY || (typeof localStorage !== 'undefined' ? (localStorage.getItem('DT_API_KEY') || '') : '');
+</script>
+<script src="preloader.js"></script>
+<script src="body.js"></script>
+<script src="app.js"></script>
+<script src="lab_report_patch.js"></script>
+</body>
+</html>

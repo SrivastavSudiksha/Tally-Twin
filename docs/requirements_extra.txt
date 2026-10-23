@@ -1,0 +1,4 @@
+# Optional extras for lab-report OCR / PDF text
+pytesseract>=0.3.10
+pypdf>=4.0.0
+# pdf2image>=1.17.0

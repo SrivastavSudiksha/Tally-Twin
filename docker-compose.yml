@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: digitaltwin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-digitaltwin_secret}
+      POSTGRES_DB: digital_twin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digitaltwin -d digital_twin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+psycopg2://digitaltwin:${POSTGRES_PASSWORD:-digitaltwin_secret}@db:5432/digital_twin
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-secret-key-change-me}
+      API_KEYS: ${API_KEYS:-dev-local-key-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      ALLOW_DEMO_FALLBACK: ${ALLOW_DEMO_FALLBACK:-true}
+      RATE_LIMIT_PER_MINUTE: "60"
+      ENABLE_DOCS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: "1.5"
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+
+  web:
+    image: nginx:1.27-alpine
+    mem_limit: 256m
+    cpus: "0.5"
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
