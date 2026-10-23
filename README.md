@@ -1,4 +1,4 @@
-# Digital Twin: Personalised Drug Behaviour Prediction
+# Tally-Twin: Personalised Drug Behaviour Prediction
 
 A digital twin for understanding how a drug might behave in a specific person, instead of relying only on what usually happens in an average patient.
 
