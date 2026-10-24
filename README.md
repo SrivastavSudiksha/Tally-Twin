@@ -1,207 +1,167 @@
-# Tally-Twin: Personalised Drug Behaviour Prediction
+# Tally Twin: Drug Behaviour Prediction
 
-A digital twin for understanding how a drug might behave in a specific person, instead of relying only on what usually happens in an average patient.
+A digital twin prototype that explores how a drug might behave in a specific person by combining patient factors (age, weight, kidney/liver function, co-medications, allergies, etc.) with drug information.
 
-People respond to medicines differently. Age, body weight, kidney and liver function, existing conditions, allergies, and other medicines can all affect how a drug behaves. This project brings those factors together and presents the results in a way that is easier to understand.
+> **Important:** This is a research & educational prototype only. It is **not** a medical device, clinical decision-support system, or substitute for professional medical advice.
 
-> **Research / educational tool only. Not a medical device.** Outputs are individualised PK-based risk estimates and must not replace clinical judgement.
+## Team and Institution
 
-## Team and institution
+- **Team name:** Yakult
+- **College / University:** Jaypee Institute of Information Technology, Noida
+- **Team members:** Sudiksha Srivastav, Katya Chadha
+- **Faculty Mentor:** Dr. Deeksha Pandey
+- **Team leader:** Sudiksha Srivastav
 
-- **Team name:** `Yakult`
-- **College / university:** `Jaypee Institute of Information Technology (JIIT), Noida`
-- **Faculty mentor:** `Dr. Deeksha Pandey`
-- **Team leader:** `Sudiksha Srivastav`
-- **Team members:**
-  - Sudiksha Srivastav: `Backend and PK engine, lab-report OCR, deployment`
-  - Katya Chadha: `Frontend Developer`
+## Problem Statement
 
-## Project title
+Standard dosing guidelines are largely based on population averages. Individual factors such as age, body composition, renal/hepatic function, co-medications and genetics can significantly alter drug exposure and risk.
 
-**Tally-Twin: Personalised Drug Behaviour Prediction**
+Accessible, transparent tools that let students and researchers explore these patient-specific effects are still limited. Tally Twin is an attempt to build a lightweight, open prototype that brings patient data and drug data together and surfaces both predictions and their limitations.
 
-## Problem statement
+## Healthcare Use Case
 
-Most standard dosing guidelines are based on population averages. They are useful, but they may not fully reflect an individual patient's physiology.
+A user enters patient details and a medicine (dose, route, frequency). The system generates a structured report containing:
 
-- **Population-based dosing:** Standard guidelines may not account for an individual's physiological profile.
-- **Limited access to modelling tools:** Some physiologically based pharmacokinetic (PBPK) platforms are designed for pharmaceutical companies and regulatory work, making them less accessible to students, researchers, and smaller institutions.
-- **Narrow existing digital twins:** Some patient digital twins focus on specific diseases or remain at the research stage.
-- **Limited transparency for new compounds:** When a drug has little supporting data, predictions can be difficult to interpret and uncertainty may be unclear.
+- Patient & drug profile summary
+- Basic pharmacokinetic estimates (where data allows)
+- Interaction & contraindication flags
+- Risk indicators and confidence notes
+- Factors that most influenced the result
 
-This project explores how an accessible, patient-specific digital twin could bring patient information and drug information together to help explain possible drug behaviour.
+The output is intended for exploration and learning, not for clinical decision making.
 
-## Healthcare use case
+## How the Prototype Works
 
-A user enters relevant patient details (manually or by uploading a lab report) and information about a medicine. The prototype generates a report with:
+1. User fills the patient form (demographics, labs, conditions, current medicines, allergies).
+2. User enters drug name / dose / route / frequency (or uploads a pack image for composition).
+3. Backend combines the inputs with available knowledge bases and simple models.
+4. A structured report is returned.
+5. User can download the report as PDF.
 
-- A patient-adjusted concentration-time curve compared with an average adult
-- Cmax, AUC, half-life and accumulation
-- An exposure risk category (Safe / Caution / High Risk)
-- Organ flags (kidney, liver, heart/QT)
-- Allergy and condition contraindications
-- Rule-based drug-drug interactions
-- Dose assessment, explainability drivers, and a confidence score
-- A downloadable PDF report for the chart or an MDT discussion
+## Technical Stack (Actual Implementation)
 
-It is intended for research and development. It is **not** a replacement for a doctor, pharmacist, validated clinical decision-support system, or professional dosing guidance.
+| Layer              | Technology                                                     |
+|--------------------|----------------------------------------------------------------|
+| Frontend           | Vanilla HTML + CSS + JavaScript (static files served by nginx) |
+| Backend            | Python 3.11, FastAPI, Uvicorn                                  |
+| Database           | PostgreSQL 15 (via Docker) + Alembic migrations                |
+| Authentication     | Simple API-key based (`API_KEYS` env var)                      |
+| Containerisation   | Docker + Docker Compose                                        |
+| PDF generation     | Backend endpoint that returns PDF report                       |
+| Optional chemistry | RDKit (not installed in current image → molecular properties limited) |
 
-## How it works
+### What is currently implemented
 
-1. **Drug parameters** (CL, Vd, F, ka, fe, therapeutic window) come from a built-in knowledge base, or safe defaults are used when the drug is unknown.
-2. **Patient clearance factor** is derived from eGFR/CrCl (CKD-EPI 2021 and Cockcroft-Gault), liver capacity (Child-Pugh-style score), age, lifestyle, and DDI multipliers.
-3. **fe-split:** renal fraction x renal factor + hepatic fraction x hepatic factor.
-4. **1-compartment** oral or IV PK with patient weight scaling (IBW/ABW where relevant).
-5. **Safety layer:** allergy cross-reactivity, condition rules (e.g. NSAID + CKD), organ flags, and a major-DDI list.
-6. **Risk merge:** exposure risk x safety risk gives the overall Safe / Caution / High Risk label.
-7. **Confidence** is computed from parameter provenance, missing labs, and a novel-compound flag.
+- Patient + Drug input forms
+- Simulation / report generation endpoint
+- PDF download of the simulation report
+- Health check endpoint (`/api/v1/health`)
+- Basic drug composition extraction from pack/label images
+- Demo fallback mode when external data is unavailable
+- CORS, rate limiting, environment-based configuration
 
-The composition table is preferred for the active dose when it matches the named drug; otherwise the stated regimen dose is used, with a warning if the mismatch is more than 15%.
+### What is **not** yet fully implemented / limited
 
-### Lab report auto-fill (OCR)
+- Full lab-report OCR → auto-fill (partial work started, not production-ready)
+- Advanced PBPK or machine-learning models
+- Genetic (CYP) data handling beyond simple flags
+- Concentration–time curve visualisation with real PK parameters for every drug
+- Production-grade uncertainty quantification
 
-The Patient tab has an **Upload lab report (image / PDF)** option. The backend runs OCR (Tesseract) and regex extractors to pull age, sex, weight, height, creatinine/eGFR, ALT, AST, bilirubin and albumin, then fills the form. Extracted values are always shown for human review, because OCR can misread numbers or units (for example g/L vs g/dL).
-
-## Inputs
-
-### Patient information
-
-| Category | Information |
-| --- | --- |
-| Demographics | Age, sex, weight, height (BMI is calculated) |
-| Kidney function | Serum creatinine or eGFR |
-| Liver function | ALT, AST, bilirubin, albumin |
-| Existing conditions | Diabetes, hypertension, heart disease, kidney or liver disease, pregnancy |
-| Current medicines | Name, dose, frequency |
-| Allergies | Known drug allergies |
-| Lifestyle | Smoking and alcohol use |
-| Optional | Genetic data (CYP2D6, CYP2C19, CYP2C9) and ECG QTc |
-
-### Drug information
-
-- Drug name or SMILES string
-- Composition (ingredient and strength), optionally pre-filled from a pack/label image
-- Dose in mg, route (oral or IV), frequency, duration
-
-## Technical stack
-
-- **Frontend:** HTML, CSS and vanilla JavaScript, served by nginx
-- **Backend:** Python 3.11, FastAPI, Uvicorn, Pydantic
-- **Database / storage:** PostgreSQL with SQLAlchemy and Alembic migrations
-- **OCR and documents:** Tesseract (pytesseract), Pillow, pypdf
-- **Molecular properties:** RDKit (optional; not installed in the default image, molecular properties are limited without it)
-- **PK modelling:** In-house Python implementation (see "Model details")
-- **Reports:** Server-side PDF generation
-- **Security:** API-key auth on all patient-data routes, rate limiting, audit logging
-- **Deployment:** Docker Compose locally; `[hosting platform, if deployed]`
-
-## AI/ML model and framework details
-
-- **What it calculates:** Individualised concentration-time profiles, exposure metrics (Cmax, AUC, half-life, accumulation), and a merged risk category with confidence.
-- **Approach:** A mechanistic, rule-based pharmacokinetic engine (1-compartment oral/IV model, with a two-compartment module in the codebase) with patient-specific clearance adjustment. It is **not** a trained machine-learning model. Drug-interaction and contraindication checks are rule-based.
-- **Lab-report extraction:** Tesseract OCR plus regex-based field extraction (pretrained OCR engine, no custom training).
-- **Data:** Drug parameters come from a curated in-repo knowledge base. `[Add sources and references for the parameters, with attribution and licence notes.]`
-- **Validation:** Unit tests for PK math, simulation, and validation anchors are in `tests/`. `[Describe which reference drugs or published values were used as anchors, and the results.]`
-- **Limitations and uncertainty:** Drugs not in the knowledge base use default parameters and are flagged as lower confidence. Missing labs reduce the confidence score. Outputs are indicative only.
-
-## Architecture
-
-**Architecture diagram (PDF/PPT):** `[Add link, e.g. architecture/architecture-diagram.pdf]`
-
-Components: browser frontend, nginx (static files and reverse proxy), FastAPI service (patients, drugs, simulations, lab-report parsing), PK and safety engine, PostgreSQL, Tesseract OCR, PDF report generator.
-
-## Prototype walkthrough video
-
-**Video (15-20 minutes, unlisted YouTube):** `[Add link]`
-
-Suggested walkthrough: problem and use case, architecture and stack, modelling approach, live demo with example inputs and outputs, what is implemented and what is not, limitations, and future work.
-
-## Project presentation
-
-**Presentation (PDF/PPT):** `[Add link, e.g. presentation/project-presentation.pdf]`
-
-## Quick start (Docker)
-
-```bash
-cp .env.example .env
-# fill in SECRET_KEY and API_KEYS (use long random values)
-
-docker compose up --build
-```
-
-- **UI:** http://localhost:8080
-- **Health:** http://localhost:8080/api/v1/health
-
-Generate a key with:
-
-```bash
-python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
-Send it as the header `X-API-Key: <key>`. In the browser, set it once from the console:
-
-```js
-localStorage.setItem('DT_API_KEY', 'your-key');
-```
-
-### Main API endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/api/v1/simulations/run?persist=true` | Run a simulation, optionally save it |
-| GET | `/api/v1/simulations/{id}` | Full stored report (JSON) |
-| GET | `/api/v1/simulations/{id}/pdf` | Download the PDF report |
-| POST | `/api/v1/simulations/run/pdf` | Run and return a PDF in one call |
-| POST | `/api/v1/patients` | Create a patient profile |
-| POST | `/api/v1/patients/parse-report` | Upload a lab report and extract fields |
-| POST | `/api/v1/drugs/lookup` | Molecular properties and basic knowledge |
-| GET | `/api/v1/health` | Liveness and DB readiness |
-
-### Tests
-
-```bash
-docker compose exec api pytest -q
-```
-
-## Outcome and current status
-
-- **What currently works:** Patient and drug input, composition table, simulation with PK curves and risk categories, interaction and contraindication checks, PDF report, lab-report OCR auto-fill, Dockerised deployment.
-- **What was evaluated:** `[Describe tests, reference-drug checks, and example runs.]`
-- **Results / outcome:** `[Add observed results. Avoid unsupported accuracy or impact claims.]`
-- **Known limitations:** Parameter coverage is limited to the knowledge base. OCR can misread values. No clinical validation has been done. RDKit is optional and not in the default image.
-- **Next steps:** Wider drug coverage, PBPK extension, stronger validation against published data, per-user authentication.
-
-## Security notes
-
-- All patient-data routes require `X-API-Key`; health endpoints stay public.
-- Production startup refuses a weak `SECRET_KEY`, empty `API_KEYS`, wildcard CORS, a non-Postgres database, and `ALLOW_DEMO_FALLBACK=true`.
-- Demo mode is off by default, so an API failure never invents clinical-looking numbers.
-- Rate limiting on patients, drugs, simulations, and uploads; audit events on patient and simulation actions.
-- **Do not upload real patient reports to any public deployment.** Use dummy data only.
-
-## Open-source licence
-
-This project is licensed under the **Apache License 2.0**. See the [`LICENSE`](LICENSE) file.
-
-## Repository structure
+## Architecture (High-level)
 
 ```text
-Tally-Twin/
-├── README.md
-├── LICENSE
-├── app/              # FastAPI backend (api, core, db, models, schemas, services, utils)
-├── alembic/          # Database migrations
-├── frontend/         # Web UI
-├── deploy/           # nginx config
-├── tests/            # Unit tests
-├── docs/             # Integration notes
-├── architecture/     # Architecture diagram (PDF/PPT)
-├── presentation/     # Project presentation (PDF/PPT)
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+Browser (localhost:8080)
+        │
+        ▼
+nginx (static frontend)
+        │
+        ▼  /api/*
+FastAPI (port 8000)
+        │
+        ├── PostgreSQL
+        ├── Simple rule / lookup engines
+        └── PDF generator
 ```
 
-## Safety note
+## Running the Prototype Locally
 
-This project is for research and development. Its outputs must not be treated as medical advice or used on their own to choose, change, or stop a medicine or dose. Drug-response predictions can be wrong, particularly when patient information is incomplete or evidence is limited. Any clinical use would require appropriate validation, clinical oversight, and safeguards. A confidence score alone does not prove that a prediction is safe or accurate.
+```bash
+# 1. Clone / open the project
+cd tally_twin
+
+# 2. Create environment file
+cp .env.example .env   # or create manually (see values below)
+
+# 3. Make frontend readable (Mac / Docker Desktop sometimes needs this)
+chmod -R a+rX frontend deploy
+
+# 4. Start everything
+docker compose up --build -d
+```
+
+Then open:
+
+- **UI:** http://localhost:8080
+- **API docs:** http://localhost:8000/docs
+- **Health:** http://localhost:8000/api/v1/health
+
+### Recommended `.env` (development)
+
+```env
+ENVIRONMENT=development
+DEBUG=false
+LOG_LEVEL=INFO
+DATABASE_URL=postgresql+psycopg2://digitaltwin:digitaltwin_secret@db:5432/digital_twin
+POSTGRES_PASSWORD=digitaltwin_secret
+SECRET_KEY=dev-only-insecure-secret-key-change-me
+API_KEYS=dev-local-key-change-me
+CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+ALLOW_DEMO_FALLBACK=true
+RATE_LIMIT_PER_MINUTE=60
+ENABLE_DOCS=true
+```
+
+### Set the API key in the browser
+
+In the browser console (once):
+
+```javascript
+localStorage.setItem('DT_API_KEY', 'dev-local-key-change-me');
+location.reload();
+```
+
+## Outcome & Current Status
+
+**What works:** End-to-end flow from form → report → PDF download. Health checks, Docker Compose setup, basic composition OCR, and demo mode.
+
+**What was evaluated:** Manual end-to-end testing with common drugs (e.g. ibuprofen, metformin) and various patient profiles.
+
+**Known limitations:**
+
+- Molecular property calculation is limited when RDKit is absent.
+- Lab-report auto-fill is incomplete.
+- PK predictions rely on simplified models / lookup data and should not be treated as clinically accurate.
+- No formal clinical validation has been performed.
+
+**Next steps (realistic):**
+
+- Complete and harden lab-report OCR + auto-fill.
+- Improve PK parameter coverage and transparency of assumptions.
+- Add better uncertainty communication in the report.
+- Add unit / integration tests.
+- Prepare architecture diagram and 20+ minute walkthrough video for submission.
+
+## Safety Note
+
+This project is for research, education and demonstration purposes only.
+
+Its outputs must not be used to choose, change or stop any medicine or dose.
+
+Drug-response predictions can be wrong, especially when patient data is incomplete or evidence is limited. Any future clinical use would require rigorous validation, regulatory review and clinical oversight.
+
+## Licence
+
+Proposed: Apache License 2.0 (subject to final team decision).
+
+A root-level `LICENSE` file should be added once the choice is confirmed.
